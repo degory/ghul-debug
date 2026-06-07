@@ -1,0 +1,16 @@
+.vscode/**
+.vscode-test/**
+.github/**
+.gitignore
+.vscodeignore
+src/**
+tests/**
+dist/**
+coverage/**
+node_modules/**
+tsconfig.json
+tsconfig.jest.json
+**/*.map
+**/*.ts
+set-version.sh
+VERSION
