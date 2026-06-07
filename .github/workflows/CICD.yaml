@@ -1,0 +1,226 @@
+# CI/CD pipeline.
+#
+# Modelled on ghul-vsce/.github/workflows/CICD.yaml. Marketplace (VSCE)
+# and Open VSX publish steps are present but commented out — uncomment
+# when `VSCE_PAT` and `OPEN_VSX_PAT` secrets have been configured for
+# this repo. Until then, release packages are attached to the GitHub
+# release only.
+
+name: CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number'
+        required: true
+
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  CI: true
+
+jobs:
+  version:
+    name: Create a version number
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      package: ${{ steps.version.outputs.package }}
+
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: '0'
+
+    # Compute the next version: the patch bump of the latest vX.Y.Z tag, unless
+    # the checked-in VERSION file declares a higher minor/major floor. VERSION
+    # is code-owned, so raising it for a non-patch release requires the code
+    # owner's review. A workflow_dispatch `version` input overrides outright;
+    # pull request builds get a -beta.<run> prerelease so they never collide
+    # with a real release.
+    - name: Determine the version
+      id: version
+      uses: degory/create-version@v1.0.0
+      with:
+        version: ${{ github.event.inputs.version }}
+        prerelease: ${{ github.event_name == 'pull_request' && format('beta.{0}', github.run_number) || '' }}
+
+  unit_tests:
+    name: Run unit tests
+    needs: [version]
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 5
+
+    steps:
+    - name: Setup NodeJS
+      uses: actions/setup-node@v6
+      with:
+        node-version: 'lts/*'
+
+    - uses: actions/checkout@v6
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Set version number in package.json
+      run: ./set-version.sh ${{ needs.version.outputs.package }}
+
+    - name: Run tests
+      run: npm test
+
+  code_review:
+    needs: [version, unit_tests]
+    name: Claude code review
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+
+    if: ${{ github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' }}
+
+    continue-on-error: true
+
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 1
+
+    - uses: anthropics/claude-code-action@v1
+      with:
+        claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        allowed_bots: "*"
+        prompt: |
+          Review pull request #${{ github.event.pull_request.number }} on ${{ github.repository }}.
+
+          CI has already passed for this commit — TypeScript compiles, unit tests pass, the beta package builds. Don't second-guess validity.
+
+          Read this file first:
+          1. .github/claude-review.md — how to operate, severity bar, what to flag
+
+          The PR branch is already checked out. Useful commands:
+          - `gh pr diff ${{ github.event.pull_request.number }}` — the diff
+          - `gh pr view ${{ github.event.pull_request.number }} --json title,body` — PR title and description
+
+          Post findings only to GitHub per the brief. Do not put review text in chat messages.
+        claude_args: |
+          --model claude-sonnet-4-6
+          --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr review:*),Read,Glob,Grep"
+
+  upload_beta_package:
+    needs: [version, unit_tests]
+    name: Publish beta package
+
+    timeout-minutes: 5
+
+    runs-on: ubuntu-latest
+
+    if: ${{ github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' }}
+    steps:
+    - name: Setup NodeJS
+      uses: actions/setup-node@v6
+      with:
+        node-version: 'lts/*'
+
+    - uses: actions/checkout@v6
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Set version number in package.json
+      run: ./set-version.sh ${{ needs.version.outputs.package }}
+
+    - name: Build VSCE package
+      run: npx @vscode/vsce package
+
+    - name: Upload beta VSCE package artifact to GitHub
+      uses: actions/upload-artifact@v7
+      if: ${{ always() }}
+      with:
+        name: vsce-package
+        path: ghul-debug-${{ needs.version.outputs.package }}.vsix
+
+  publish_release_package:
+    needs: [version, unit_tests]
+    name: Publish release package
+
+    timeout-minutes: 5
+
+    runs-on: ubuntu-latest
+
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    steps:
+    - name: Setup NodeJS
+      uses: actions/setup-node@v6
+      with:
+        node-version: 'lts/*'
+
+    - uses: actions/checkout@v6
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Set version number in package.json
+      run: ./set-version.sh ${{ needs.version.outputs.package }}
+
+    - name: Build VSCE package
+      run: npx @vscode/vsce package
+
+    - name: Upload release VSCE package artifact to GitHub
+      uses: actions/upload-artifact@v7
+      if: ${{ always() }}
+      with:
+        name: vsce-package
+        path: ghul-debug-${{ needs.version.outputs.package }}.vsix
+
+    # Marketplace + Open VSX publish are deliberately disabled until the
+    # corresponding tokens have been configured as repo secrets. To enable
+    # publishing, set VSCE_PAT and OPEN_VSX_PAT in the repo's Actions
+    # secrets, then uncomment both steps below.
+    #
+    # - name: VSCE publish
+    #   run: npx @vscode/vsce publish -p ${{ secrets.VSCE_PAT }}
+    #
+    # - name: Open VSX publish
+    #   run: npx ovsx publish "ghul-debug-${{ needs.version.outputs.package }}.vsix" -p ${{ secrets.OPEN_VSX_PAT }}
+
+  create_release:
+    needs: [version, unit_tests, publish_release_package]
+    name: Create release
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 5
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+    permissions:
+      contents: 'write'
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Create changelog
+      run: git log -1 --format="%s%n%n%b%n%n" >changelog.txt
+
+    - name: Download release VSCE package artifact from GitHub
+      uses: actions/download-artifact@v8
+      with:
+        name: vsce-package
+
+    - name: Create release and upload VSIX
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create "${{ needs.version.outputs.tag }}" \
+          --title "${{ needs.version.outputs.tag }}" \
+          --notes-file changelog.txt \
+          "ghul-debug-${{ needs.version.outputs.package }}.vsix"

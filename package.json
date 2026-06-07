@@ -1,0 +1,179 @@
+{
+    "name": "ghul-debug",
+    "displayName": "ghūl debugger",
+    "description": "Source-level debugger for ghūl, via netcoredbg",
+    "version": "0.1.0",
+    "publisher": "degory",
+    "license": "GPL-3.0",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/degory/ghul-debug.git"
+    },
+    "bugs": {
+        "url": "https://github.com/degory/ghul-debug/issues"
+    },
+    "homepage": "https://ghul.dev",
+    "icon": "images/ghul-logo-icon.png",
+    "engines": {
+        "vscode": "^1.85.0"
+    },
+    "categories": [
+        "Debuggers"
+    ],
+    "keywords": [
+        "ghul",
+        "ghūl",
+        "debugger",
+        "netcoredbg"
+    ],
+    "activationEvents": [
+        "onDebugResolve:ghul",
+        "onDebugDynamicConfigurations:ghul"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "breakpoints": [
+            {
+                "language": "ghul"
+            }
+        ],
+        "debuggers": [
+            {
+                "type": "ghul",
+                "label": "ghūl (netcoredbg)",
+                "languages": [
+                    "ghul"
+                ],
+                "configurationAttributes": {
+                    "launch": {
+                        "required": [
+                            "program"
+                        ],
+                        "properties": {
+                            "program": {
+                                "type": "string",
+                                "description": "Path to the compiled managed assembly (.dll) to launch.",
+                                "default": "${workspaceFolder}/bin/Debug/net10.0/${workspaceFolderBasename}.dll"
+                            },
+                            "args": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Command-line arguments passed to the program.",
+                                "default": []
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Working directory for the launched program.",
+                                "default": "${workspaceFolder}"
+                            },
+                            "env": {
+                                "type": "object",
+                                "description": "Environment variables for the launched program.",
+                                "default": {}
+                            },
+                            "stopAtEntry": {
+                                "type": "boolean",
+                                "description": "Stop on entry to the program's entry point.",
+                                "default": false
+                            },
+                            "justMyCode": {
+                                "type": "boolean",
+                                "description": "Step only through user code, skipping framework and library code.",
+                                "default": false
+                            },
+                            "console": {
+                                "type": "string",
+                                "enum": [
+                                    "internalConsole",
+                                    "integratedTerminal",
+                                    "externalTerminal"
+                                ],
+                                "default": "internalConsole",
+                                "description": "Where the launched program's stdin / stdout / stderr are wired."
+                            }
+                        }
+                    }
+                },
+                "initialConfigurations": [
+                    {
+                        "name": "ghūl: launch",
+                        "type": "ghul",
+                        "request": "launch",
+                        "program": "${workspaceFolder}/bin/Debug/net10.0/${workspaceFolderBasename}.dll",
+                        "cwd": "${workspaceFolder}",
+                        "console": "internalConsole",
+                        "stopAtEntry": false,
+                        "justMyCode": false
+                    }
+                ],
+                "configurationSnippets": [
+                    {
+                        "label": "ghūl: launch",
+                        "description": "Launch a compiled ghūl program under netcoredbg",
+                        "body": {
+                            "name": "ghūl: launch ${1:program}",
+                            "type": "ghul",
+                            "request": "launch",
+                            "program": "^\"\\${workspaceFolder}/${1:program}.exe\"",
+                            "cwd": "^\"\\${workspaceFolder}\"",
+                            "console": "internalConsole",
+                            "stopAtEntry": false,
+                            "justMyCode": false
+                        }
+                    }
+                ]
+            }
+        ],
+        "configuration": {
+            "title": "ghūl debugger",
+            "properties": {
+                "ghul.debug.netcoredbgPath": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Absolute path to the netcoredbg executable. Leave blank to use the binary on $PATH."
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "test": "jest"
+    },
+    "devDependencies": {
+        "@types/jest": "^30.0.0",
+        "@types/node": "^20.0.0",
+        "@types/vscode": "^1.85.0",
+        "jest": "^30.0.0",
+        "ts-jest": "^29.4.0",
+        "typescript": "^5.4.0"
+    },
+    "jest": {
+        "roots": [
+            "<rootDir>/tests"
+        ],
+        "testEnvironment": "node",
+        "testMatch": [
+            "**/*.test.ts"
+        ],
+        "transform": {
+            "^.+\\.ts$": [
+                "ts-jest",
+                {
+                    "tsconfig": "tsconfig.jest.json"
+                }
+            ]
+        },
+        "moduleNameMapper": {
+            "^vscode$": "<rootDir>/tests/mocks/vscode.ts"
+        },
+        "moduleFileExtensions": [
+            "ts",
+            "js",
+            "json"
+        ]
+    }
+}
