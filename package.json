@@ -145,11 +145,11 @@
     },
     "devDependencies": {
         "@types/jest": "^30.0.0",
-        "@types/node": "^20.0.0",
+        "@types/node": "^25.9.2",
         "@types/vscode": "^1.85.0",
         "jest": "^30.0.0",
         "ts-jest": "^29.4.0",
-        "typescript": "^5.4.0"
+        "typescript": "^6.0.3"
     },
     "jest": {
         "roots": [
