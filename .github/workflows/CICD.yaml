@@ -35,7 +35,7 @@ jobs:
       contents: read
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: '0'
 
@@ -65,7 +65,7 @@ jobs:
       with:
         node-version: 'lts/*'
 
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
 
     - name: Install dependencies
       run: npm install
@@ -92,7 +92,7 @@ jobs:
       id-token: write
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 1
 
@@ -132,7 +132,7 @@ jobs:
       with:
         node-version: 'lts/*'
 
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
 
     - name: Install dependencies
       run: npm install
@@ -165,7 +165,7 @@ jobs:
       with:
         node-version: 'lts/*'
 
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
 
     - name: Install dependencies
       run: npm install
@@ -206,7 +206,7 @@ jobs:
       contents: 'write'
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
 
     - name: Create changelog
       run: git log -1 --format="%s%n%n%b%n%n" >changelog.txt
