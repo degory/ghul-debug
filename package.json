@@ -141,14 +141,16 @@
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
-        "test": "jest"
+        "typecheck": "tsc --noEmit -p tsconfig.test.json",
+        "test": "npm run typecheck && jest"
     },
     "devDependencies": {
+        "@swc/core": "^1.15.46",
+        "@swc/jest": "^0.2.39",
         "@types/jest": "^30.0.0",
         "@types/node": "^26.0.0",
         "@types/vscode": "^1.85.0",
         "jest": "^30.0.0",
-        "ts-jest": "^29.4.0",
         "typescript": "^7.0.0"
     },
     "jest": {
@@ -161,9 +163,17 @@
         ],
         "transform": {
             "^.+\\.ts$": [
-                "ts-jest",
+                "@swc/jest",
                 {
-                    "tsconfig": "tsconfig.jest.json"
+                    "jsc": {
+                        "parser": {
+                            "syntax": "typescript"
+                        },
+                        "target": "es2020"
+                    },
+                    "module": {
+                        "type": "commonjs"
+                    }
                 }
             ]
         },

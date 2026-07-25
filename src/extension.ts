@@ -50,7 +50,7 @@ export type ResolveOutcome =
 //      though .NET-Framework-style .exe and modern .dll managed
 //      assemblies are byte-for-byte identical PE32 files.
 export function resolveGhulDebugConfiguration(
-    config: vscode.DebugConfiguration,
+    config: Partial<vscode.DebugConfiguration>,
     context: ResolveContext
 ): ResolveOutcome {
     if (!config.type && !config.request && !config.name) {
@@ -78,7 +78,9 @@ export function resolveGhulDebugConfiguration(
         config.args = [assemblyPath, ...((config.args as string[] | undefined) ?? [])];
     }
 
-    return { kind: 'ok', config };
+    // Either the auto-synthesis branch above supplied type/request/name, or
+    // they came from a launch.json entry VSCode had already validated.
+    return { kind: 'ok', config: config as vscode.DebugConfiguration };
 }
 
 class GhulConfigurationProvider implements vscode.DebugConfigurationProvider {
