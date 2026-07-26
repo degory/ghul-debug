@@ -10,28 +10,48 @@ Not loaded by local Claude Code; only the cloud reviewer reads this.
 
 ## What this repo is
 
-`ghul-debug` is the ghūl debug adapter: a TypeScript implementation of the Debug
-Adapter Protocol that lets VS Code step through ghūl programs. It sits between the
-editor and the .NET debugger, translating DAP requests and mapping IL positions
-back to ghūl source.
+`ghul-debug` is the ghūl VS Code debugging extension. It does not implement a
+debug adapter: it registers a descriptor factory and a `DebugConfigurationProvider`
+for the `ghul` debug type, and defers the actual debugging to Samsung's
+`netcoredbg`. Two TypeScript files, `src/extension.ts` and
+`src/netcoredbg-installer.ts`.
 
-A fault here shows up as a debugger that attaches but lies - breakpoints on the
-wrong line, variables reading as the wrong values - which is harder to notice than
-one that fails outright.
+The installer fetches a pinned `netcoredbg` release over HTTPS, verifies it against
+a hard-coded SHA-256, caches it under the extension's global storage, and returns
+`undefined` on any failure so the caller falls back to the user's
+`ghul.debug.netcoredbgPath` or `$PATH`. Auto-install is linux-amd64 only; every
+other platform takes that fallback.
 
 ## What to watch for here
 
-- Source-position mapping between IL and ghūl source. An off-by-one lands a
-  breakpoint on the wrong line and looks like a compiler bug.
-- DAP conformance: missing or malformed responses, requests answered out of order,
-  capabilities advertised but not implemented.
-- Process lifecycle - a debuggee left running after detach, or an adapter that
-  does not terminate cleanly, strands processes on the user's machine.
-- Unhandled rejections on the adapter message path, which present as the debugger
-  hanging rather than erroring.
+- **The pinned release and its hash.** `NETCOREDBG_VERSION` and
+  `NETCOREDBG_LINUX_AMD64_SHA256` must move together — a version bump without a
+  recomputed hash turns every first-time install into a hash mismatch, and a hash
+  weakened or skipped makes this a supply-chain path for anyone who can serve that
+  URL. Treat the verification step as security-relevant, not as a nicety.
+- **The no-throw contract.** `ensureNetcoredbg` promises that every failure mode —
+  unsupported platform, network error, TLS failure, hash mismatch, extraction
+  failure — returns `undefined` with a warning rather than throwing. A new code path
+  that can throw breaks activation for users whose fallback would have worked.
+- **Launch-configuration resolution.** `resolveGhulDebugConfiguration` is where a
+  malformed or incomplete config should be rejected with something a user can act
+  on. Its result shape is a discriminated union; a new failure that returns `ok`
+  with a half-populated config surfaces later as an opaque debugger error.
+- **Platform assumptions.** The linux-amd64 guard is explicit today. Anything that
+  assumes the auto-install path succeeded, or that a cached binary exists, needs to
+  hold on macOS and Windows where it never runs.
+- **`package.json` contributions** — `breakpoints`, the `ghul` debugger type, and
+  `ghul.debug.netcoredbgPath` — drifting from what the resolver and installer
+  actually read.
 
 ## Versioning
 
-Major means a change requiring a VS Code or compiler version users do not yet
-have, or an incompatible change to how the adapter is launched or configured;
-minor means new DAP capabilities or configuration options.
+This section is the only authority on what breaking means here, since the runtime
+notes defer to it. The user-visible surface is the `ghul` debug type and its launch
+configuration schema, the `ghul.debug.netcoredbgPath` setting, and which
+`netcoredbg` version gets installed.
+
+Major means breaking any of those: a removed or renamed configuration property, a
+changed debug type, or a `netcoredbg` bump that requires a runtime users do not
+have. Minor means additions — new configuration properties, new platforms gaining
+auto-install. A `netcoredbg` patch bump with its hash recomputed is a patch here.
