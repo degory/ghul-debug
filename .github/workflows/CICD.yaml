@@ -99,7 +99,9 @@ jobs:
         Read this file first:
         1. .github/claude-review.md — what this repo is, and what to watch for in it
     secrets:
-      opencode-api-key: ${{ secrets.OPENCODE_API_KEY }}
+      qwen-auth-token: ${{ secrets.QWEN_API_KEY }}
+      openrouter-auth-token: ${{ secrets.OPENROUTER_API_KEY }}
+      zai-auth-token: ${{ secrets.ZAI_API_KEY }}
       gh-app-private-key: ${{ secrets.GHUL_REVIEWER_PRIVATE_KEY }}
 
   upload_beta_package:
