@@ -86,3 +86,7 @@ Produces `ghul-debug-<version>.vsix`. Install with `code --install-extension ghu
 ## License
 
 GPL-3.0. See [LICENSE](./LICENSE).
+
+## issues
+
+[View open issues](https://github.com/degory/ghul/issues?q=is%3Aopen+is%3Aissue+label%3Aghul-debug) or [raise a new one](https://github.com/degory/ghul/issues/new?labels=ghul-debug).
