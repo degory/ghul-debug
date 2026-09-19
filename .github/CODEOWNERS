@@ -3,6 +3,5 @@
 # "Require review from Code Owners" + "Required approvals = 0": only PRs that
 # touch these paths need the owner's review; everything else can auto-merge.
 
-/VERSION              @degory
 /.github/workflows/   @degory
 /.github/CODEOWNERS   @degory
